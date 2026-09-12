@@ -9,7 +9,7 @@
  * cloudflare-worker/worker.js 파일 상단 주석과 README.md를 참고하세요.
  * ==================================================================== */
 
-const WORKER_URL = 'https://REPLACE-ME.workers.dev'; // Cloudflare Worker 배포 후 이 값을 실제 주소로 교체하세요
+const WORKER_URL = 'https://mockinvest.thehunters.workers.dev';
 
 async function callWorker(path, body) {
   const res = await fetch(`${WORKER_URL}${path}`, {
