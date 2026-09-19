@@ -1,5 +1,18 @@
 {
-  "groups": [],
+  "groups": [
+    {
+      "id": "75740654-3cd5-42d5-89a8-6279bdbbcb21",
+      "name": "3조",
+      "code": "1686",
+      "startYear": 2020,
+      "endYear": 2026,
+      "stockKeys": [
+        "005930",
+        "034730"
+      ],
+      "createdAt": 1789802987835
+    }
+  ],
   "participants": [
     {
       "id": "a33f1db6-6188-4f36-870a-991d325c3f5d",
