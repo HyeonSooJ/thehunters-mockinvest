@@ -12,7 +12,9 @@
 3. **이번 주 랜덤 챌린지** — 사이트가 ISO 주차를 시드로 매주 자동으로 투자 기간·종목을 결정합니다(서버 저장 없이
    모든 방문자가 결정론적으로 동일한 조건을 봅니다). 참가자에게는 그 주의 전체 참가자 순위표가 제공됩니다.
 4. **실제 KRX 일별 시세 기반 캔들차트** — `data/ohlc/<종목코드>.js`에 2020-01-02 ~ 2026-07-03 일별 시가/고가/저가/종가
-   데이터가 들어 있습니다 (FinanceData/marcap 데이터셋 기준).
+   데이터가 들어 있습니다. 원 출처는 한국거래소(KRX) 정보데이터시스템(data.krx.co.kr)이며,
+   [FinanceData/marcap](https://github.com/FinanceData/marcap) 데이터셋을 그대로 사용했습니다. 사이트 footer에도
+   출처를 표기해두었습니다.
 5. **Google AdSense** — `index.html`에 로더 스크립트와 광고 슬롯(`<ins class="adsbygoogle">`)이 이미 들어가
    있습니다. `ca-pub-0000000000000000` (2곳) 과 `data-ad-slot` 값을 본인의 실제 AdSense 퍼블리셔 ID/슬롯으로
    교체하세요. AdSense 심사를 통과하려면 사이트가 먼저 GitHub Pages 등으로 실제 배포되어 있어야 합니다.

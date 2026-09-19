@@ -213,4 +213,7 @@ table.leaderboard tr.clickable:hover { background: var(--color-up-bg); }
 }
 
 .footer { background: var(--color-black); color: #9a9a9a; padding: 40px 0; }
-.disclaimer { font-size: 0.78rem; color: #6b6b6b; line-height: 1.7; margin: 0; }
+.disclaimer { font-size: 0.78rem; color: #6b6b6b; line-height: 1.7; margin: 0 0 8px; }
+.disclaimer:last-child { margin-bottom: 0; }
+.disclaimer a { text-decoration: underline; }
+.disclaimer a:hover { color: #fff; }
