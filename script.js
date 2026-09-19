@@ -392,9 +392,8 @@ function renderEntry() {
       </div>
       <div class="admin-row">
         <button class="btn btn-outline btn-small" id="createGroupBtn" type="button">그룹 생성</button>
-        <button class="btn btn-outline btn-small" id="adminRecordBtn" type="button">기록 조회</button>
-        <button class="btn btn-outline btn-small" id="adminGroupLookupBtn" type="button">그룹 조회</button>
-        <button class="btn btn-outline btn-small" id="adminResetBtn" type="button">데이터 초기화</button>
+        <button class="btn btn-outline btn-small" id="resultsLookupBtn" type="button">결과 보기</button>
+        <button class="btn btn-outline btn-small" id="adminMenuBtn" type="button">관리자</button>
       </div>
     </div>
   `;
@@ -407,9 +406,8 @@ function renderEntry() {
     if (!state.nick) { alert('닉네임을 먼저 입력해주세요.'); return; }
     openCreateGroupModal();
   });
-  document.getElementById('adminRecordBtn').addEventListener('click', openRecordLookup);
-  document.getElementById('adminGroupLookupBtn').addEventListener('click', openGroupLookup);
-  document.getElementById('adminResetBtn').addEventListener('click', adminReset);
+  document.getElementById('resultsLookupBtn').addEventListener('click', openResultsLookup);
+  document.getElementById('adminMenuBtn').addEventListener('click', openAdminMenu);
 }
 
 function handleNicknameConfirm() {
@@ -805,26 +803,97 @@ function renderGroupCreatedScreen(group) {
   document.getElementById('gcJoinNowBtn').addEventListener('click', () => joinGroup(group));
 }
 
-/* --- 관리자: 데이터 초기화 --- */
-async function adminReset() {
+/* --- 결과 보기 (일반인, 그룹 이름 + 코드로 순위표 조회) --- */
+function openResultsLookup() {
+  openModal(`
+    <h3>결과 보기</h3>
+    <p class="mi-help">그룹 이름과 4자리 참가 코드를 입력하면 순위표를 확인할 수 있습니다.</p>
+    <div class="form-group"><label for="rlName">그룹 이름</label><input type="text" id="rlName" placeholder="예: 1조"></div>
+    <div class="form-group"><label for="rlCode">참가 코드 (4자리)</label><input type="text" id="rlCode" inputmode="numeric" maxlength="4" placeholder="예: 1234"></div>
+    <p class="mi-error" id="rlError" hidden></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="rlCancelBtn" type="button">취소</button>
+      <button class="btn btn-primary btn-block" id="rlSubmitBtn" type="button">결과 보기</button>
+    </div>
+  `);
+  document.getElementById('rlCancelBtn').addEventListener('click', closeModal);
+  const submit = async () => {
+    const name = document.getElementById('rlName').value.trim();
+    const code = document.getElementById('rlCode').value.trim();
+    const errEl = document.getElementById('rlError');
+    if (!name || !/^\d{4}$/.test(code)) { errEl.textContent = '그룹 이름과 4자리 코드를 모두 입력하세요.'; errEl.hidden = false; return; }
+    let group;
+    try {
+      group = await callWorker('/find-group', { code });
+    } catch (e) {
+      errEl.textContent = e.message === 'not_found' ? '코드가 올바르지 않거나 그룹이 만료되었습니다.' : e.message;
+      errEl.hidden = false;
+      return;
+    }
+    if (group.name.trim().toLowerCase() !== name.toLowerCase()) {
+      errEl.textContent = '그룹 이름이 일치하지 않습니다.'; errEl.hidden = false; return;
+    }
+    closeModal();
+    await renderResultsView(group);
+  };
+  document.getElementById('rlSubmitBtn').addEventListener('click', submit);
+  document.getElementById('rlCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+}
+
+async function renderResultsView(group) {
+  appRoot.innerHTML = `<p class="mi-help">순위표를 불러오는 중...</p>`;
+  let participants = [];
+  try {
+    const r = await callWorker('/group-leaderboard', { groupId: group.id });
+    participants = r.participants;
+  } catch (e) {
+    appRoot.innerHTML = `<p class="mi-error">순위표를 불러오지 못했습니다: ${e.message}</p><button class="btn btn-outline" id="rvBackBtn" type="button">← 처음으로</button>`;
+    document.getElementById('rvBackBtn').addEventListener('click', renderEntry);
+    return;
+  }
+  const list = participants.map((p) => ({ name: p.nickname, profit: p.profit || 0 })).sort((a, b) => b.profit - a.profit);
+  const rows = list.map((item, i) => `<tr class="${state.nick && item.name === state.nick ? 'me' : ''}"><td>${i + 1}</td><td>${item.name}</td><td>${item.profit.toFixed(2)}%</td></tr>`).join('');
+  appRoot.innerHTML = `
+    <h3>${group.name} 그룹 순위표</h3>
+    <p class="mi-help">${group.startYear}~${group.endYear} · ${stockNames(group.stockKeys)}</p>
+    <table class="leaderboard"><thead><tr><th>순위</th><th>닉네임</th><th>수익률</th></tr></thead><tbody>${rows || '<tr><td colspan="3">아직 결과가 없습니다.</td></tr>'}</tbody></table>
+    <button class="btn btn-outline mi-next-btn" id="rvBackBtn" type="button">← 처음으로</button>
+  `;
+  document.getElementById('rvBackBtn').addEventListener('click', renderEntry);
+}
+
+/* --- 관리자 메뉴 (비밀번호 한 번만 입력하면 3가지 기능 중 선택) --- */
+function openAdminMenu() {
   const pw = prompt('관리자 비밀번호:');
   if (pw === null) return;
+  openModal(`
+    <h3>관리자 메뉴</h3>
+    <p class="mi-help">원하는 기능을 선택하세요.</p>
+    <div class="modal-actions" style="flex-direction:column;">
+      <button class="btn btn-outline btn-block" id="adminMenuRecordBtn" type="button">기록 조회</button>
+      <button class="btn btn-outline btn-block" id="adminMenuGroupBtn" type="button">그룹 조회</button>
+      <button class="btn btn-outline btn-block" id="adminMenuResetBtn" type="button">데이터 초기화</button>
+      <button class="btn btn-outline btn-block" id="adminMenuCloseBtn" type="button">닫기</button>
+    </div>
+  `);
+  document.getElementById('adminMenuRecordBtn').addEventListener('click', () => backToRecordList(pw));
+  document.getElementById('adminMenuGroupBtn').addEventListener('click', () => renderGroupLookupModal(pw));
+  document.getElementById('adminMenuResetBtn').addEventListener('click', () => adminResetWithPw(pw));
+  document.getElementById('adminMenuCloseBtn').addEventListener('click', closeModal);
+}
+
+async function adminResetWithPw(pw) {
   if (!confirm('모든 참가자 기록을 초기화하시겠습니까? (그룹 자체는 유지되고 참가자 기록만 삭제됩니다)')) return;
   try {
     await callWorker('/reset', { adminPassword: pw });
     alert('초기화되었습니다.');
+    closeModal();
   } catch (e) {
     alert(e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : e.message);
   }
 }
 
 /* --- 관리자: 기록 조회 --- */
-async function openRecordLookup() {
-  const pw = prompt('관리자 비밀번호:');
-  if (pw === null) return;
-  await backToRecordList(pw);
-}
-
 async function backToRecordList(pw) {
   let data;
   try { data = await callWorker('/admin/list-groups', { adminPassword: pw }); }
@@ -875,12 +944,6 @@ async function confirmDeleteParticipant(pw, scope, nickname, label) {
 }
 
 /* --- 관리자: 생성된 모든 그룹 조회 --- */
-async function openGroupLookup() {
-  const pw = prompt('관리자 비밀번호:');
-  if (pw === null) return;
-  await renderGroupLookupModal(pw);
-}
-
 async function renderGroupLookupModal(pw) {
   let data;
   try { data = await callWorker('/admin/list-groups', { adminPassword: pw }); }
