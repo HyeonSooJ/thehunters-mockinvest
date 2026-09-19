@@ -19,6 +19,12 @@
       "nickname": "정현수",
       "scope": "weekly:2026-W37",
       "profit": 5.2
+    },
+    {
+      "id": "08b01d6e-0f9c-435e-b56d-c938d7baf849",
+      "nickname": "정현수",
+      "scope": "group:75740654-3cd5-42d5-89a8-6279bdbbcb21",
+      "profit": 0
     }
   ]
 }
