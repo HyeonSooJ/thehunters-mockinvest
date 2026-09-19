@@ -22,9 +22,8 @@ async function callWorker(path, body) {
   return result;
 }
 
-let latestState = { groups: [], participants: [] };
-async function fetchState() { latestState = await callWorker('/state', {}); return latestState; }
 function escAttr(s) { return String(s).replace(/'/g, "\\'"); }
+function stockNames(keys) { return (keys || []).map((k) => (MI_STOCK_POOL.find((s) => s.key === k) || { name: k }).name).join(', '); }
 
 /* --- 모달 --- */
 function openModal(html) {
@@ -380,7 +379,7 @@ function renderEntry() {
       <div class="mode-grid">
         <button class="mode-card" id="modeGroupBtn" type="button">
           <div class="mode-icon">🏆</div><h4>그룹 대항전</h4>
-          <p>관리자가 만든 그룹에 참가해 같은 조건(기간·종목)으로 겨루고, 그룹 내 순위표를 확인합니다.</p>
+          <p>4자리 참가 코드로 그룹에 들어가 같은 조건(기간·종목)으로 겨루고, 그룹 내 순위표를 확인합니다.</p>
         </button>
         <button class="mode-card" id="modeSoloBtn" type="button">
           <div class="mode-icon">🧑‍💻</div><h4>혼자 하기</h4>
@@ -392,8 +391,9 @@ function renderEntry() {
         </button>
       </div>
       <div class="admin-row">
-        <button class="btn btn-outline btn-small" id="adminCreateBtn" type="button">그룹 생성</button>
+        <button class="btn btn-outline btn-small" id="createGroupBtn" type="button">그룹 생성</button>
         <button class="btn btn-outline btn-small" id="adminRecordBtn" type="button">기록 조회</button>
+        <button class="btn btn-outline btn-small" id="adminGroupLookupBtn" type="button">그룹 조회</button>
         <button class="btn btn-outline btn-small" id="adminResetBtn" type="button">데이터 초기화</button>
       </div>
     </div>
@@ -403,8 +403,12 @@ function renderEntry() {
   document.getElementById('modeGroupBtn').addEventListener('click', () => startMode('group'));
   document.getElementById('modeSoloBtn').addEventListener('click', () => startMode('solo'));
   document.getElementById('modeWeeklyBtn').addEventListener('click', () => startMode('weekly'));
-  document.getElementById('adminCreateBtn').addEventListener('click', openCreateGroupModal);
+  document.getElementById('createGroupBtn').addEventListener('click', () => {
+    if (!state.nick) { alert('닉네임을 먼저 입력해주세요.'); return; }
+    openCreateGroupModal();
+  });
   document.getElementById('adminRecordBtn').addEventListener('click', openRecordLookup);
+  document.getElementById('adminGroupLookupBtn').addEventListener('click', openGroupLookup);
   document.getElementById('adminResetBtn').addEventListener('click', adminReset);
 }
 
@@ -418,88 +422,62 @@ function handleNicknameConfirm() {
 function startMode(mode) {
   if ((mode === 'group' || mode === 'weekly') && !state.nick) { alert('닉네임을 먼저 입력해주세요.'); return; }
   state.mode = mode;
-  if (mode === 'group') renderGroupSelect();
+  if (mode === 'group') renderGroupJoinByCode();
   else if (mode === 'solo') {
     miSelectedKeys = []; miCash = MI_INITIAL_CASH; miHoldings = 0;
     renderMiPeriodStep();
   } else if (mode === 'weekly') renderWeeklyIntro();
 }
 
-/* --- 그룹 대항전 --- */
-async function renderGroupSelect() {
-  appRoot.innerHTML = `<p class="mi-help">그룹 목록을 불러오는 중...</p>`;
-  try { await fetchState(); } catch (e) { appRoot.innerHTML = `<p class="mi-error">그룹 목록을 불러오지 못했습니다: ${e.message}</p><button class="btn btn-outline" id="groupErrBackBtn">← 처음으로</button>`; document.getElementById('groupErrBackBtn').addEventListener('click', renderEntry); return; }
-  renderGroupListUI('');
-}
-
-function renderGroupListUI(filter) {
-  const groups = [...latestState.groups].sort((a, b) => a.name.localeCompare(b.name));
-  const cnt = {};
-  latestState.participants.forEach((p) => { if (p.scope && p.scope.startsWith('group:')) cnt[p.scope] = (cnt[p.scope] || 0) + 1; });
-  const keyword = filter.trim().toLowerCase();
-  const filtered = keyword ? groups.filter((g) => g.name.toLowerCase().includes(keyword)) : groups;
-
+/* --- 그룹 대항전: 4자리 코드로 참가 --- */
+function renderGroupJoinByCode() {
   appRoot.innerHTML = `
-    <h3>그룹 선택</h3>
-    <p class="mi-help">참가할 그룹을 선택하세요. 그룹마다 정해진 투자 기간·종목으로 함께 겨룹니다. (그룹명을 더블클릭하면 관리자 수정)</p>
-    <input type="text" class="mi-select group-search" id="groupSearchInput" placeholder="그룹 검색..." value="${filter}">
-    <div class="group-list" id="groupListBox"></div>
-    <button class="btn btn-outline" id="groupBackBtn" type="button">← 처음으로</button>
-  `;
-
-  const box = document.getElementById('groupListBox');
-  box.innerHTML = filtered.map((g) => `
-    <div class="group-row" data-id="${g.id}">
-      <span><span class="group-name">${g.name}</span><br><span class="group-meta">${g.startYear}~${g.endYear} · ${(g.stockKeys || []).map((k) => (MI_STOCK_POOL.find((s) => s.key === k) || { name: k }).name).join(', ')}</span></span>
-      <span class="group-count">${cnt[`group:${g.id}`] || 0}명</span>
+    <h3>그룹 코드로 참가하기</h3>
+    <p class="mi-help">그룹을 만든 사람에게 받은 4자리 참가 코드를 입력하세요. 그룹 목록은 공개되지 않고, 코드를 아는 사람만 참가할 수 있습니다.</p>
+    <div class="form-group">
+      <label for="groupCodeInput">참가 코드 (4자리)</label>
+      <input type="text" id="groupCodeInput" inputmode="numeric" maxlength="4" placeholder="예: 1234">
     </div>
-  `).join('') || '<p class="mi-help">생성된 그룹이 없습니다. 관리자에게 그룹 생성을 요청하세요.</p>';
-
-  box.querySelectorAll('.group-row').forEach((row) => {
-    const g = filtered.find((x) => x.id === row.dataset.id);
-    row.addEventListener('click', () => confirmJoinGroup(g));
-    const nameEl = row.querySelector('.group-name');
-    nameEl.addEventListener('dblclick', (e) => { e.stopPropagation(); adminEditGroup(g); });
-  });
-  document.getElementById('groupSearchInput').addEventListener('input', (e) => renderGroupListUI(e.target.value));
-  document.getElementById('groupBackBtn').addEventListener('click', renderEntry);
+    <p class="mi-error" id="groupCodeError" hidden></p>
+    <div class="quiz-actions">
+      <button class="btn btn-outline" id="groupCodeBackBtn" type="button">← 처음으로</button>
+      <button class="btn btn-primary" id="groupCodeSubmitBtn" type="button">참가하기 →</button>
+    </div>
+  `;
+  document.getElementById('groupCodeBackBtn').addEventListener('click', renderEntry);
+  const submit = async () => {
+    const code = document.getElementById('groupCodeInput').value.trim();
+    const errEl = document.getElementById('groupCodeError');
+    if (!/^\d{4}$/.test(code)) { errEl.textContent = '4자리 숫자 코드를 입력하세요.'; errEl.hidden = false; return; }
+    errEl.hidden = true;
+    let group;
+    try {
+      group = await callWorker('/find-group', { code });
+    } catch (e) {
+      errEl.textContent = e.message === 'not_found' ? '코드가 올바르지 않거나 그룹이 만료되었습니다.' : e.message;
+      errEl.hidden = false;
+      return;
+    }
+    await joinGroup(group);
+  };
+  document.getElementById('groupCodeSubmitBtn').addEventListener('click', submit);
+  document.getElementById('groupCodeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
 }
 
-async function confirmJoinGroup(group) {
-  if (!group) return;
-  if (!confirm(`"${group.name}" 그룹으로 참가하시겠습니까?`)) return;
+async function joinGroup(group) {
+  if (!confirm(`"${group.name}" 그룹 (${group.startYear}~${group.endYear} · ${stockNames(group.stockKeys)}) 으로 참가하시겠습니까?`)) return;
   try {
     const r = await callWorker('/add-participant', { nickname: state.nick, scope: `group:${group.id}` });
     state.myDocId = r.id;
     state.group = group;
   } catch (e) {
     if (e.message === 'duplicate') return alert('이미 사용 중인 닉네임입니다. 닉네임을 바꿔서 다시 시도해주세요.');
+    if (e.message === 'group_not_found') return alert('이 그룹은 만료되었거나 존재하지 않습니다.');
     return alert(`참가 등록 실패: ${e.message}`);
   }
   miStartYear = group.startYear; miEndYear = group.endYear; miSelectedKeys = [...group.stockKeys];
   miCash = MI_INITIAL_CASH; miHoldings = 0; miRoundIndex = 0; miRoundResults = [];
   beginMiRound();
-}
-
-async function adminEditGroup(group) {
-  const pw = prompt('관리자 비밀번호:');
-  if (pw === null) return;
-  const newName = prompt('새 그룹명:', group.name);
-  if (newName === null) return;
-  if (newName && newName !== group.name) {
-    try {
-      await callWorker('/rename-group', { id: group.id, name: newName, adminPassword: pw });
-    } catch (e) {
-      return alert(e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : e.message);
-    }
-  }
-  if (!confirm(`"${newName || group.name}" 그룹을 삭제하시겠습니까? (참가자 기록도 함께 삭제됩니다)`)) { renderGroupSelect(); return; }
-  try {
-    await callWorker('/delete-group', { id: group.id, adminPassword: pw });
-  } catch (e) {
-    alert(e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : e.message);
-  }
-  renderGroupSelect();
 }
 
 /* --- 이번 주 랜덤 챌린지 --- */
@@ -732,10 +710,17 @@ const renderMiFinalResult = async () => {
 };
 
 async function showScopeLeaderboard(resultListHtml) {
-  const scope = state.mode === 'group' ? `group:${state.group.id}` : `weekly:${state.weekId}`;
-  let data;
-  try { data = await fetchState(); } catch (e) { data = latestState; }
-  const list = data.participants.filter((p) => p.scope === scope).map((p) => ({ name: p.nickname, profit: p.profit || 0 })).sort((a, b) => b.profit - a.profit);
+  let participants = [];
+  try {
+    if (state.mode === 'group') {
+      const r = await callWorker('/group-leaderboard', { groupId: state.group.id });
+      participants = r.participants;
+    } else {
+      const r = await callWorker('/weekly-leaderboard', { weekId: state.weekId });
+      participants = r.participants;
+    }
+  } catch (e) { /* 순위표를 못 불러와도 결과 화면 자체는 보여준다 */ }
+  const list = participants.map((p) => ({ name: p.nickname, profit: p.profit || 0 })).sort((a, b) => b.profit - a.profit);
   const me = list.find((x) => x.name === state.nick);
   const title = state.mode === 'group' ? `${state.group.name} 그룹 순위표` : `${state.weekId} 주간 챌린지 순위표`;
   const rows = list.map((item, i) => `<tr class="${item.name === state.nick ? 'me' : ''}"><td>${i + 1}</td><td>${item.name}</td><td>${item.profit.toFixed(2)}%</td></tr>`).join('');
@@ -749,29 +734,31 @@ async function showScopeLeaderboard(resultListHtml) {
   document.getElementById('lbBackBtn').addEventListener('click', renderEntry);
 }
 
-/* --- 관리자: 그룹 생성 --- */
+/* --- 그룹 생성: 누구나 비밀번호 없이 가능, 4자리 참가 코드 발급 --- */
 function openCreateGroupModal() {
-  const pw = prompt('관리자 비밀번호:');
-  if (pw === null) return;
   const yearOpts = (sel) => {
     let o = '';
     for (let y = MI_MIN_YEAR; y <= MI_MAX_YEAR; y += 1) o += `<option value="${y}" ${y === sel ? 'selected' : ''}>${y}년</option>`;
     return o;
   };
   openModal(`
-    <h3>그룹 생성</h3>
-    <div class="form-group"><label for="gcName">그룹명</label><input type="text" id="gcName" placeholder="예: 1조"></div>
+    <h3>새 그룹 만들기</h3>
+    <div class="form-group"><label for="gcName">그룹명</label><input type="text" id="gcName" placeholder="예: 1조" maxlength="60"></div>
     <div class="mi-period-row">
       <div class="form-group"><label for="gcStart">시작 연도</label><select class="mi-select" id="gcStart">${yearOpts(MI_MIN_YEAR)}</select></div>
       <div class="form-group"><label for="gcEnd">종료 연도</label><select class="mi-select" id="gcEnd">${yearOpts(MI_MAX_YEAR)}</select></div>
     </div>
-    <p class="mi-help">이 그룹 참가자 전원이 아래에서 고른 연도·종목으로 동일하게 플레이합니다 (종목 2개, 각 1라운드씩).</p>
+    <p class="mi-help">그룹원 전원이 아래에서 고른 연도·종목으로 동일하게 플레이합니다 (종목 2개, 각 1라운드씩).</p>
     <input type="text" class="mi-select mi-stock-search" id="gcSearch" placeholder="종목명으로 검색">
     <div class="mi-stock-grid" id="gcGrid"></div>
     <p class="mi-error" id="gcError" hidden></p>
+    <div class="challenge-banner">
+      <strong>⚠️ 자동 삭제 안내</strong>
+      <p>생성된 그룹은 <b>7일이 지나면 자동으로 삭제</b>됩니다. 그 전에 참가 코드를 그룹원들에게 공유하고 대회를 마쳐주세요.</p>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline" id="gcCancelBtn" type="button">취소</button>
-      <button class="btn btn-primary btn-block" id="gcSubmitBtn" type="button">그룹 생성</button>
+      <button class="btn btn-primary btn-block" id="gcSubmitBtn" type="button">그룹 만들기</button>
     </div>
   `);
   const picker = createStockPicker('gcGrid', 2, []);
@@ -787,15 +774,35 @@ function openCreateGroupModal() {
     if (!name) { errEl.textContent = '그룹명을 입력하세요.'; errEl.hidden = false; return; }
     if (endYear <= startYear) { errEl.textContent = '종료 연도는 시작 연도보다 커야 합니다.'; errEl.hidden = false; return; }
     if (stockKeys.length !== 2) { errEl.textContent = '종목을 정확히 2개 선택하세요.'; errEl.hidden = false; return; }
+    let group;
     try {
-      await callWorker('/create-group', { name, startYear, endYear, stockKeys, adminPassword: pw });
-      closeModal();
-      alert(`"${name}" 그룹이 생성되었습니다.`);
+      group = await callWorker('/create-group', { name, startYear, endYear, stockKeys });
     } catch (e) {
-      errEl.textContent = e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : e.message;
-      errEl.hidden = false;
+      errEl.textContent = e.message; errEl.hidden = false;
+      return;
     }
+    closeModal();
+    renderGroupCreatedScreen(group);
   });
+}
+
+function renderGroupCreatedScreen(group) {
+  appRoot.innerHTML = `
+    <h3>그룹이 만들어졌어요!</h3>
+    <p class="mi-help">아래 4자리 코드를 그룹원들에게 공유하세요. 코드를 입력하면 누구나 이 그룹에 참가할 수 있습니다.</p>
+    <div class="me-card" style="text-align:center; font-size:2.2rem; font-weight:800; letter-spacing:0.3em; padding:24px;">${group.code}</div>
+    <p class="mi-help">${group.name} · ${group.startYear}~${group.endYear} · ${stockNames(group.stockKeys)}</p>
+    <div class="challenge-banner">
+      <strong>⚠️ 자동 삭제 안내</strong>
+      <p>이 그룹은 생성 후 7일이 지나면 자동으로 삭제됩니다(그룹원 기록도 함께 삭제). 그 전에 대회를 마쳐주세요.</p>
+    </div>
+    <div class="quiz-actions">
+      <button class="btn btn-outline" id="gcBackBtn" type="button">← 처음으로</button>
+      <button class="btn btn-primary" id="gcJoinNowBtn" type="button">지금 바로 참가하기 →</button>
+    </div>
+  `;
+  document.getElementById('gcBackBtn').addEventListener('click', renderEntry);
+  document.getElementById('gcJoinNowBtn').addEventListener('click', () => joinGroup(group));
 }
 
 /* --- 관리자: 데이터 초기화 --- */
@@ -820,9 +827,10 @@ async function openRecordLookup() {
 
 async function backToRecordList(pw) {
   let data;
-  try { data = await fetchState(); } catch (e) { return alert(`데이터를 불러오지 못했습니다: ${e.message}`); }
+  try { data = await callWorker('/admin/list-groups', { adminPassword: pw }); }
+  catch (e) { return alert(e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : `데이터를 불러오지 못했습니다: ${e.message}`); }
   const groups = [...data.groups].sort((a, b) => a.name.localeCompare(b.name));
-  const weekIds = [...new Set(data.participants.filter((p) => p.scope && p.scope.startsWith('weekly:')).map((p) => p.scope.slice(7)))].sort().reverse();
+  const weekIds = data.weekIds;
 
   let html = `<h3>기록 조회</h3><p class="mi-help">그룹 또는 주간 챌린지를 선택하세요.</p><div class="group-list">`;
   groups.forEach((g) => { html += `<div class="group-row" onclick="openRecordTable('${escAttr(pw)}','${escAttr(`group:${g.id}`)}','${escAttr(g.name)}')"><span>${g.name}</span><span class="group-meta">그룹</span></div>`; });
@@ -836,8 +844,9 @@ async function backToRecordList(pw) {
 
 async function openRecordTable(pw, scope, label) {
   let data;
-  try { data = await fetchState(); } catch (e) { return alert(`데이터를 불러오지 못했습니다: ${e.message}`); }
-  const list = data.participants.filter((p) => p.scope === scope).sort((a, b) => (b.profit || 0) - (a.profit || 0));
+  try { data = await callWorker('/admin/scope-participants', { adminPassword: pw, scope }); }
+  catch (e) { return alert(e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : `데이터를 불러오지 못했습니다: ${e.message}`); }
+  const list = [...data.participants].sort((a, b) => (b.profit || 0) - (a.profit || 0));
 
   let html = `<h3>${label}</h3><p class="mi-help">닉네임을 클릭하면 삭제할 수 있습니다.</p>`;
   if (list.length === 0) html += '<p class="mi-help">참가자가 없습니다.</p>';
@@ -865,8 +874,54 @@ async function confirmDeleteParticipant(pw, scope, nickname, label) {
   }
 }
 
+/* --- 관리자: 생성된 모든 그룹 조회 --- */
+async function openGroupLookup() {
+  const pw = prompt('관리자 비밀번호:');
+  if (pw === null) return;
+  await renderGroupLookupModal(pw);
+}
+
+async function renderGroupLookupModal(pw) {
+  let data;
+  try { data = await callWorker('/admin/list-groups', { adminPassword: pw }); }
+  catch (e) { return alert(e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : e.message); }
+  const groups = [...data.groups].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  let html = `<h3>생성된 그룹 전체 조회</h3>`;
+  if (groups.length === 0) html += '<p class="mi-help">생성된 그룹이 없습니다.</p>';
+  else {
+    html += `<div class="group-list">${groups.map((g) => {
+      const daysLeft = g.expiresAt ? Math.max(0, Math.ceil((g.expiresAt - Date.now()) / 86400000)) : null;
+      return `
+        <div class="group-row">
+          <span>
+            <span class="group-name">${g.name}</span> · 코드 <b>${g.code}</b><br>
+            <span class="group-meta">${g.startYear}~${g.endYear} · ${stockNames(g.stockKeys)} · ${g.participantCount}명 참가${daysLeft !== null ? ` · 만료까지 D-${daysLeft}` : ''}</span>
+          </span>
+          <button class="btn btn-outline btn-small" type="button" onclick="adminDeleteGroupFromList('${escAttr(pw)}','${escAttr(g.id)}')">삭제</button>
+        </div>
+      `;
+    }).join('')}</div>`;
+  }
+  html += `<div class="modal-actions"><button class="btn btn-outline btn-block" id="groupLookupCloseBtn" type="button">닫기</button></div>`;
+
+  openModal(html);
+  document.getElementById('groupLookupCloseBtn').addEventListener('click', closeModal);
+}
+
+async function adminDeleteGroupFromList(pw, id) {
+  if (!confirm('이 그룹을 삭제하시겠습니까? (참가자 기록도 함께 삭제됩니다)')) return;
+  try {
+    await callWorker('/delete-group', { id, adminPassword: pw });
+    renderGroupLookupModal(pw);
+  } catch (e) {
+    alert(e.message === 'unauthorized' ? '비밀번호가 틀렸습니다.' : e.message);
+  }
+}
+
 /* window에 노출 (인라인 onclick에서 호출하기 위함) */
 window.openRecordTable = openRecordTable;
 window.confirmDeleteParticipant = confirmDeleteParticipant;
+window.adminDeleteGroupFromList = adminDeleteGroupFromList;
 
 renderEntry();
