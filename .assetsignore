@@ -5,3 +5,7 @@ data/mock-investment-data.json
 wrangler.jsonc
 .assetsignore
 .github/
+node_modules/
+package.json
+package-lock.json
+.git/
