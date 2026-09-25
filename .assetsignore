@@ -1,0 +1,6 @@
+cloudflare-worker/
+README.md
+LEADERBOARD.md
+data/mock-investment-data.json
+wrangler.jsonc
+.assetsignore
