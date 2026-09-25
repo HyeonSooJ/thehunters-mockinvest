@@ -11,6 +11,18 @@
         "034730"
       ],
       "createdAt": 1789802987835
+    },
+    {
+      "id": "81610f5b-dced-4590-82c7-453bf9b00321",
+      "name": "3조",
+      "code": "9546",
+      "startYear": 2020,
+      "endYear": 2026,
+      "stockKeys": [
+        "035420",
+        "055550"
+      ],
+      "createdAt": 1790351074451
     }
   ],
   "participants": [
