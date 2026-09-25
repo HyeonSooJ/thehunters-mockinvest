@@ -93,8 +93,8 @@ h3 { font-size: 1.2rem; }
 .section-desc { color: var(--color-text-muted); }
 
 .tool-body { padding: 56px 0 100px; background: var(--color-bg); }
-.tool-panel { background: var(--color-bg-alt); border-radius: var(--radius); padding: 32px; margin-bottom: 24px; }
-.tool-panel h3 { margin-bottom: 8px; }
+.tool-panel { background: var(--color-bg-alt); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+.tool-panel h3 { margin-bottom: 6px; }
 .ad-slot { min-height: 0; }
 
 /* --- 진입 화면 / 모드 선택 --- */
@@ -127,7 +127,7 @@ input[type="text"], input[type="number"], select.mi-select {
 }
 input[type="text"]:focus, input[type="number"]:focus, select.mi-select:focus { outline: none; border-color: var(--color-black); }
 
-.mi-help { color: var(--color-text-muted); margin: 0 0 24px; }
+.mi-help { color: var(--color-text-muted); margin: 0 0 14px; font-size: 0.9rem; }
 .mi-error { color: var(--color-up); font-size: 0.88rem; margin: 0 0 16px; }
 .mi-period-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 480px; margin-bottom: 20px; }
 .mi-stock-search { margin-bottom: 16px; max-width: 360px; }
@@ -142,23 +142,23 @@ input[type="text"]:focus, input[type="number"]:focus, select.mi-select:focus { o
 }
 .mi-stock-btn:hover { border-color: var(--color-black); }
 .mi-stock-btn.selected { background: var(--color-black); border-color: var(--color-black); color: #fff; }
-.mi-trade-controls { justify-content: flex-start; margin: 24px 0 8px; }
-.mi-next-btn { margin-top: 8px; }
+.mi-trade-controls { justify-content: flex-start; margin: 14px 0 6px; }
+.mi-next-btn { margin-top: 8px; padding: 10px 24px; }
 .mi-result-list { display: flex; flex-direction: column; gap: 12px; margin: 0 0 24px; }
 .mi-result-list li { display: flex; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); font-weight: 600; }
 .mi-result-list li:last-child { border-bottom: none; padding-bottom: 0; }
 
-.portfolio-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
-.stat-card { text-align: center; padding: 24px 12px; background: var(--color-black); color: #fff; border-radius: var(--radius); }
-.stat-card strong { display: block; font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
-.stat-card span { color: #9a9a9a; font-size: 0.86rem; }
+.portfolio-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card { text-align: center; padding: 12px 8px; background: var(--color-black); color: #fff; border-radius: var(--radius); }
+.stat-card strong { display: block; font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+.stat-card span { color: #9a9a9a; font-size: 0.76rem; }
 
 .trade-controls { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .qty-input { width: 64px; padding: 8px; border-radius: var(--radius); border: 1.5px solid var(--color-border); font-family: inherit; font-size: 0.85rem; text-align: right; }
 .qty-input:focus { outline: none; border-color: var(--color-black); }
 
-.quiz-chart-wrap { background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
-.quiz-chart { width: 100%; height: auto; display: block; }
+.quiz-chart-wrap { background: #fff; border-radius: var(--radius); padding: 12px; margin: 0 auto 14px; max-width: 460px; }
+.quiz-chart { width: 100%; height: auto; display: block; max-height: 220px; }
 .chart-label { font-size: 12px; fill: var(--color-text-muted); font-weight: 600; }
 
 .quiz-actions { display: flex; justify-content: space-between; gap: 12px; }
