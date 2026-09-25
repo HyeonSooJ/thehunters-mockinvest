@@ -9,6 +9,7 @@
  * cloudflare-worker/worker.js 파일 상단 주석과 README.md를 참고하세요.
  * ==================================================================== */
 
+// deploy-trigger: Cloudflare Git 자동배포 연결 확인용
 const WORKER_URL = 'https://mockinvest.mockinvest.workers.dev';
 
 async function callWorker(path, body) {
